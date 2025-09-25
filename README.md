@@ -1,12 +1,13 @@
 # EduShelf
 
-EduShelf is a serverless book exchange platform designed to bridge the gap between seniors, juniors, and students. Built with React, TypeScript, Tailwind CSS, and Firebase, EduShelf enables users to exchange, buy, and sell books in a secure, real-time environment—making it easy for different academic levels to connect and share resources, all without the need for a backend server.
+EduShelf is a serverless book exchange platform designed to bridge the gap between seniors, juniors, and students. Built with React, TypeScript, Tailwind CSS, and Firebase, EduShelf enables academic communities to share, exchange, and request books in a secure, real-time environment—making it easy for different academic levels to connect and support each other, all without the need for a backend server.
 
 ---
 
 ## Table of Contents
 
 - [Project Description](#project-description)
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Folder Structure](#folder-structure)
@@ -19,11 +20,11 @@ EduShelf is a serverless book exchange platform designed to bridge the gap betwe
 
 ## Project Description
 
-EduShelf simplifies the exchange of educational books and resources across different academic groups. The platform is developed to connect seniors, juniors, and students, making it easy to:
+EduShelf is developed to foster connections and resource-sharing between seniors, juniors, and students. The platform makes it easy to:
 
 - **Sign up or log in securely** via Firebase Authentication.
-- **Post books for exchange or sale** with details like title, author, price, and description.
-- **Browse available books** and filter/search by subject or author to find materials shared by seniors, juniors, or peers.
+- **Post books for exchange or request** with details like title, author, price, and description.
+- **Browse available books** and filter/search by subject, year, or author—helping you find materials shared by seniors, juniors, or peers.
 - **Manage your own book listings** — edit or delete entries as your academic needs change.
 
 ### Why serverless?
@@ -34,11 +35,24 @@ EduShelf simplifies the exchange of educational books and resources across diffe
 
 ---
 
+## Screenshots
+
+### Login Page
+![Login Page](assets/login.png)
+
+### Book Discovery & Request
+![Books Page](assets/books.png)
+
+### Add a New Book
+![Add Book Modal](assets/addbook.png)
+
+---
+
 ## Features
 
 - **User Authentication** (Sign-up / Login / Logout)
 - **Book Management** (Add, Edit, Delete listings)
-- **Search & Filter** by subject, author, or price to find resources from seniors, juniors, or fellow students
+- **Search & Filter** by subject, year, author, or price to find resources from seniors, juniors, or fellow students
 - **Role-based Access** (Users can only edit their own listings)
 - **Real-time Database Updates**
 - **Responsive UI** with Tailwind CSS and shadcn/ui components
@@ -136,10 +150,10 @@ npm run build
 ## Usage
 
 - Register / Login as a senior, junior, or student
-- Add a new book for exchange or sale in the Add Book section
+- Add a new book for exchange or request in the Add Book section
 - Browse books in the Books page shared by your academic peers
 - Edit or delete your listings from the Seller Dashboard as your needs change
-- Search and filter books by subject or author, discovering resources from across student groups
+- Search and filter books by subject, year, or author, discovering resources from across student groups
 
 ---
 
