@@ -11,13 +11,16 @@ interface AddBookFormProps {
 
 const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
   const { user } = useAuth();
+
   const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
   const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState<number | null>(null);
+  const [category, setCategory] = useState('');
+  const [regulation, setRegulation] = useState('');
   const [condition, setCondition] = useState('Good');
-  const [imageUrl, setImageUrl] = useState('');
+  const [year, setYear] = useState('');
+  const [price, setPrice] = useState<number | null>(null);
+  const [description, setDescription] = useState('');
+
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,18 +28,23 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
     if (!user) return;
 
     setSubmitting(true);
+
     try {
       await addDoc(collection(db, 'books'), {
         title: title.trim(),
-        author: author.trim(),
         subject: subject.trim(),
-        description: description.trim(),
-        price: price ? Number(price) : null,
+        category,
+        regulation,
         condition,
-        image_url: imageUrl.trim() || null,
+        year,
+        price: price ? Number(price) : null,
+        description: description.trim(),
+        image_urls: [
+          "https://via.placeholder.com/300x400.png?text=Book+Image"
+        ], // ✅ default image
         is_available: true,
         owner_id: user.uid,
-        created_at: serverTimestamp(), // proper Firestore timestamp
+        created_at: serverTimestamp(),
       });
 
       onBookAdded();
@@ -59,12 +67,12 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="text-2xl font-bold mb-6">Add a New Book</h2>
+        <h2 className="text-2xl font-bold mb-6">List Book for Sale</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
-            placeholder="Title"
+            placeholder="Book Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
@@ -73,62 +81,73 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
 
           <input
             type="text"
-            placeholder="Your Year & Section"
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            required
-            className="w-full border rounded-lg px-4 py-2"
-          />
-
-          <input
-            type="text"
-            placeholder="Subject(Same as Title)"
+            placeholder="Branch"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             required
             className="w-full border rounded-lg px-4 py-2"
           />
 
-          <textarea
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
-          />
-
-          <input
-            type="number"
-            placeholder="Price (leave empty if free)"
-            value={price ?? ''}
-            onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : null)}
-            className="w-full border rounded-lg px-4 py-2"
-          />
 
           <select
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
+            value={regulation}
+            onChange={(e) => setRegulation(e.target.value)}
+            required
             className="w-full border rounded-lg px-4 py-2"
           >
-            <option value="Excellent">Excellent</option>
-            <option value="Good">Good</option>
-            <option value="Fair">Fair</option>
-            <option value="Poor">Poor</option>
+            <option value="">Select Regulation</option>
+            <option value="R18">R19</option>
+            <option value="R20">R20</option>
+            <option value="R22">R23</option>
           </select>
 
+          {/* <select
+            value={condition}
+            onChange={(e) => setCondition(e.target.value)}
+            required
+            className="w-full border rounded-lg px-4 py-2"
+          >
+            <option value="">Book Condition</option>
+            <option value="Book Condition">Excellent</option>
+            <option value="">Good</option>
+            <option value="">Fair</option>
+            <option value="">Poor</option>
+          </select> */}
+
+          {/* <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            required
+            className="w-full border rounded-lg px-4 py-2"
+          >
+            <option value="">Select Year</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+          </select> */}
+          
           <input
-            type="text"
-            placeholder="Image URL (optional)"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            type="number"
+            placeholder="Selling Price (₹)"
+            value={price ?? ''}
+            onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : null)}
+            required
+            className="w-full border rounded-lg px-4 py-2"
+          />
+
+          <textarea
+            placeholder="Please Provide your Name, Year & Branch,Contact Number"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             className="w-full border rounded-lg px-4 py-2"
           />
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-gradient-to-r from-blue-600 to-teal-600 text-white py-2 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-teal-700 transition-all duration-200 disabled:opacity-50"
+            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 disabled:opacity-50"
           >
-            {submitting ? 'Adding...' : 'Add Book'}
+            {submitting ? 'Listing...' : 'List Book for Sale'}
           </button>
         </form>
       </div>

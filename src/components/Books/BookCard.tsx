@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, DollarSign, Tag, Clock, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 interface Book {
   id: string;
@@ -30,6 +30,7 @@ interface BookCardProps {
 const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestButton = true }) => {
   const { user } = useAuth();
   const [requesting, setRequesting] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
   const [message, setMessage] = useState('');
   const [showRequestModal, setShowRequestModal] = useState(false);
 
@@ -37,8 +38,22 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
   const defaultImage =
     'https://images.pexels.com/photos/1029141/pexels-photo-1029141.jpeg?auto=compress&cs=tinysrgb&w=400';
 
+  useEffect(() => {
+    const checkRequestStatus = async () => {
+      if (!user) return;
+      const q = query(
+        collection(db, 'exchange_requests'),
+        where('book_id', '==', book.id),
+        where('requester_id', '==', user.uid)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) setRequestSent(true);
+    };
+    checkRequestStatus();
+  }, [book.id, user]);
+
   const handleRequestBook = async () => {
-    if (!user || isOwnBook) return;
+    if (!user || isOwnBook || requestSent) return;
 
     setRequesting(true);
     try {
@@ -51,30 +66,32 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
         created_at: serverTimestamp(),
       });
 
+      setRequestSent(true);
       setShowRequestModal(false);
       setMessage('');
       onRequestSent?.();
     } catch (error: any) {
       console.error('Error requesting book:', error);
-      alert('Failed to send request. You may have already requested this book.');
+      alert('Failed to send request.');
     } finally {
       setRequesting(false);
     }
   };
 
-const formatDate = (dateValue: any) => {
-  if (!dateValue) return "Unknown";
-  const date =
-    typeof dateValue.toDate === "function"
-      ? dateValue.toDate()
-      : new Date(dateValue);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
-
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return 'Unknown';
+    try {
+      const date =
+        typeof dateValue.toDate === 'function' ? dateValue.toDate() : new Date(dateValue);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return 'Unknown';
+    }
+  };
 
   const getConditionColor = (condition: string) => {
     switch (condition.toLowerCase()) {
@@ -93,6 +110,7 @@ const formatDate = (dateValue: any) => {
 
   return (
     <>
+      {/* Book Card */}
       <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200">
         {/* Book Image */}
         <div className="relative h-48 bg-gray-100">
@@ -100,9 +118,7 @@ const formatDate = (dateValue: any) => {
             src={book.image_url || defaultImage}
             alt={book.title}
             className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = defaultImage;
-            }}
+            onError={(e) => ((e.target as HTMLImageElement).src = defaultImage)}
           />
           {!book.is_available && (
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -117,8 +133,7 @@ const formatDate = (dateValue: any) => {
         <div className="p-6">
           <div className="mb-4">
             <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">{book.title}</h3>
-            <p className="text-gray-600 text-sm mb-2">by {book.author}</p>
-
+            <p className="text-gray-600 text-sm mb-2">{book.author}</p>
             <div className="flex items-center space-x-2 mb-3">
               <span
                 className={`px-2 py-1 text-xs font-medium border rounded-full ${getConditionColor(
@@ -143,7 +158,7 @@ const formatDate = (dateValue: any) => {
             {book.price ? (
               <div className="flex items-center text-green-600 font-semibold">
                 <DollarSign className="h-4 w-4 mr-1" />
-                <span>${book.price}</span>
+                <span>{book.price}</span>
               </div>
             ) : (
               <span className="text-blue-600 font-semibold">Free</span>
@@ -165,11 +180,16 @@ const formatDate = (dateValue: any) => {
           {/* Request Button */}
           {showRequestButton && !isOwnBook && book.is_available && (
             <button
-              onClick={() => setShowRequestModal(true)}
-              className="w-full bg-gradient-to-r from-blue-600 to-teal-600 text-white py-2 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-teal-700 transition-all duration-200 flex items-center justify-center space-x-2"
+              onClick={() => !requestSent && setShowRequestModal(true)}
+              disabled={requestSent}
+              className={`w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2 ${
+                requestSent
+                  ? 'bg-gray-400 cursor-not-allowed text-white'
+                  : 'bg-gradient-to-r from-blue-600 to-teal-600 text-white hover:from-blue-700 hover:to-teal-700'
+              }`}
             >
               <MessageSquare className="h-4 w-4" />
-              <span>Request Book</span>
+              <span>{requestSent ? 'Request Sent' : 'Request Book'}</span>
             </button>
           )}
 
@@ -210,10 +230,14 @@ const formatDate = (dateValue: any) => {
               </button>
               <button
                 onClick={handleRequestBook}
-                disabled={requesting}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-teal-600 text-white py-2 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-teal-700 transition-all duration-200 disabled:opacity-50"
+                disabled={requesting || requestSent}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium text-white flex items-center justify-center transition-all duration-200 ${
+                  requestSent || requesting
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700'
+                }`}
               >
-                {requesting ? 'Sending...' : 'Send Request'}
+                {requesting ? 'Sending...' : requestSent ? 'Request Sent' : 'Send Request'}
               </button>
             </div>
           </div>

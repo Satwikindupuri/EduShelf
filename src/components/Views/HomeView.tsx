@@ -4,6 +4,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import BookCard from '../Books/BookCard';
 import AddBookForm from '../Books/AddBookForm';
+import { useAuth } from '../../contexts/AuthContext'; // Add this import
 
 interface Book {
   id: string;
@@ -23,6 +24,7 @@ interface Book {
 }
 
 const HomeView: React.FC = () => {
+  const { user } = useAuth(); // Add this line
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,6 +58,9 @@ const HomeView: React.FC = () => {
   };
 
   const filteredBooks = books.filter((book) => {
+    // Exclude books posted by the current user
+    if (user && book.owner_id === user.uid) return false;
+
     const matchesSearch =
       book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||

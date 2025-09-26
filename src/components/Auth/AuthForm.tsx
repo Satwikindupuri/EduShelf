@@ -41,9 +41,19 @@ const AuthForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center relative">
+      {/* Blurred background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center filter blur-sm"
+        style={{ backgroundImage: "url('/ideal_bg.jpg')" }}
+        aria-hidden="true"
+      />
+      {/* Overlay to darken the background (optional) */}
+      <div className="absolute inset-0 bg-black bg-opacity-40" />
+
+      {/* AuthForm content */}
+      <div className="relative z-10 max-w-md w-full">
+        <div className="bg-tra rounded-2xl shadow-xl p-8 border border-gray-100">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
@@ -54,7 +64,7 @@ const AuthForm: React.FC = () => {
             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
               EduShelf
             </h2>
-            <p className="text-gray-600 mt-2">
+            <p className="font-bold text-white mt-2">
               {isSignUp ? 'Create your account' : 'Welcome back'}
             </p>
           </div>
@@ -69,7 +79,7 @@ const AuthForm: React.FC = () => {
 
             {isSignUp && (
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="name" className="block text-sm font-bold text-white mb-2">
                   Full Name
                 </label>
                 <div className="relative">
@@ -91,7 +101,7 @@ const AuthForm: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-bold text-white mb-2">
                 Email Address
               </label>
               <div className="relative">
@@ -112,7 +122,7 @@ const AuthForm: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-bold text-white mb-2">
                 Password
               </label>
               <div className="relative">
@@ -161,7 +171,7 @@ const AuthForm: React.FC = () => {
 
           {/* Toggle between sign in and sign up */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="block text-sm font-bold text-white mb-2">
               {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
               <button
                 type="button"

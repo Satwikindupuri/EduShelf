@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Calendar, Edit3, Save, X } from 'lucide-react';
+import { User, Mail, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase'; // your firebase config file
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { getAuth, updatePassword } from 'firebase/auth';
 
 const ProfileView: React.FC = () => {
-  const { user } = useAuth(); // user comes from Firebase Auth (uid, email, etc.)
+  const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({ name: '' });
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Fetch profile from Firestore
   useEffect(() => {
@@ -20,10 +21,9 @@ const ProfileView: React.FC = () => {
         const snap = await getDoc(ref);
         if (snap.exists()) {
           setProfile(snap.data());
-          setFormData({ name: snap.data().name || '' });
         } else {
           // if no profile, create a default one
-          setProfile({ name: '', createdAt: user.metadata.creationTime });
+          setProfile({ name: '', phone: '', bio: '', createdAt: user.metadata.creationTime });
         }
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -33,29 +33,6 @@ const ProfileView: React.FC = () => {
     fetchProfile();
   }, [user]);
 
-  // Save profile updates
-  const handleSave = async () => {
-    if (!user) return;
-    setLoading(true);
-
-    try {
-      const ref = doc(db, 'users', user.uid);
-      await updateDoc(ref, { name: formData.name });
-      setProfile((prev: any) => ({ ...prev, name: formData.name }));
-      setIsEditing(false);
-    } catch (err) {
-      console.error('Error updating profile:', err);
-      alert('Failed to update profile');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setFormData({ name: profile?.name || '' });
-    setIsEditing(false);
-  };
-
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -63,6 +40,23 @@ const ProfileView: React.FC = () => {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordLoading(true);
+    try {
+      const auth = getAuth();
+      if (auth.currentUser) {
+        await updatePassword(auth.currentUser, newPassword);
+        alert('Password updated successfully!');
+        setShowPasswordModal(false);
+        setNewPassword('');
+      }
+    } catch (err: any) {
+      alert('Failed to update password: ' + err.message);
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   return (
@@ -80,7 +74,7 @@ const ProfileView: React.FC = () => {
           <div className="flex justify-center lg:justify-start mb-6 lg:mb-0">
             <div className="w-32 h-32 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center shadow-lg">
               <span className="text-4xl font-bold text-white">
-                {formData.name ? formData.name.charAt(0).toUpperCase() : 'U'}
+                {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
               </span>
             </div>
           </div>
@@ -89,45 +83,13 @@ const ProfileView: React.FC = () => {
           <div className="flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Personal Information</h2>
-                <p className="text-gray-600">Update your account details here</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Information</h2>
+                <p className="text-gray-600">Your account details</p>
               </div>
-
-              {!isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="mt-4 sm:mt-0 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                >
-                  <Edit3 className="h-4 w-4" />
-                  <span>Edit Profile</span>
-                </button>
-              )}
             </div>
 
-            {/* Form Fields */}
+            {/* Email */}
             <div className="space-y-6">
-              {/* Name */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                ) : (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <User className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-900">{profile?.name || 'Not set'}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
@@ -156,27 +118,6 @@ const ProfileView: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* Action Buttons */}
-            {isEditing && (
-              <div className="flex space-x-4 mt-8 pt-6 border-t border-gray-200">
-                <button
-                  onClick={handleSave}
-                  disabled={loading}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>{loading ? 'Saving...' : 'Save Changes'}</span>
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="bg-gray-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                >
-                  <X className="h-4 w-4" />
-                  <span>Cancel</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -207,6 +148,47 @@ const ProfileView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Change Password Button */}
+      <div className="flex justify-center mt-8">
+        <button
+          onClick={() => setShowPasswordModal(true)}
+          className="bg-teal-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-teal-700 transition-colors"
+        >
+          Change Password
+        </button>
+      </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full">
+            <h2 className="text-xl font-bold mb-4">Change Password</h2>
+            <input
+              type="password"
+              placeholder="New Password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+            />
+            <div className="flex space-x-4">
+              <button
+                onClick={handleChangePassword}
+                disabled={passwordLoading}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+              >
+                {passwordLoading ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
