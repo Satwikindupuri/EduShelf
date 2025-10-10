@@ -157,7 +157,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
 
           {/* 🖼️ Image Upload Section */}
           <div>
-            <label className="block font-medium mb-1">Upload Images (max 3)</label>
+            <label className="block font-medium mb-1">Upload Images (less than 1408Kb)</label>
             <input
               type="file"
               accept="image/*"

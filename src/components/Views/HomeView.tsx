@@ -94,7 +94,7 @@ const HomeView: React.FC<HomeViewProps> = ({ darkMode = false }) => {
         <div>
           <h1 className={`text-3xl font-bold mb-2 ${textClass}`}>Available Books</h1>
           <p className={`text-gray-600 dark:text-gray-400`}>
-            Discover and request books from your fellow students
+            Discover and request books & written notes from your fellow students
           </p>
         </div>
         <button

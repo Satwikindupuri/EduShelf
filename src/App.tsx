@@ -6,6 +6,7 @@ import HomeView from './components/Views/HomeView';
 import MyBooksView from './components/Views/MyBooksView';
 import RequestsView from './components/Views/RequestsView';
 import ProfileView from './components/Views/ProfileView';
+import EarnMore from './components/Views/EarnMore';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -32,11 +33,13 @@ const AppContent: React.FC = () => {
       case 'home':
         return <HomeView darkMode={darkMode} />;
       case 'my-books':
-        return <MyBooksView darkMode={darkMode} />;
+        return <MyBooksView/>;
       case 'requests':
-        return <RequestsView darkMode={darkMode} />;
+        return <RequestsView/>;
       case 'profile':
-        return <ProfileView darkMode={darkMode} />;
+        return <ProfileView/>;
+      case 'Earn-More':
+        return <EarnMore />;
       default:
         return <HomeView darkMode={darkMode} />;
     }
@@ -48,8 +51,8 @@ const AppContent: React.FC = () => {
         <Navbar
           currentView={currentView}
           onViewChange={setCurrentView}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
+          // darkMode={darkMode}
+          // setDarkMode={setDarkMode}
         />
         <main>{renderView()}</main>
       </div>

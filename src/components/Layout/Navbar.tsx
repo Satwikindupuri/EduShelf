@@ -27,6 +27,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
     { id: 'my-books', label: 'My Books', icon: Library },
     { id: 'requests', label: 'Requests', icon: MessageSquare },
     { id: 'profile', label: 'Profile', icon: User },
+    { id: 'Earn-More', label: 'Earn-More', icon: BookOpen },
   ];
 
   const handleNavClick = (viewId: string) => {
