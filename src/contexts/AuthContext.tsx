@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  User,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 
@@ -8,13 +14,14 @@ interface Profile {
   name: string;
   email: string;
   created_at: string;
+  phone?: string; // optional to maintain backward compatibility
 }
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, phone: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
@@ -53,6 +60,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (docSnap.exists()) {
       setProfile(docSnap.data() as Profile);
     } else {
+      // Create default profile if not exists
       const newProfile: Profile = {
         id: userId,
         name: email.split("@")[0],
@@ -64,15 +72,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
+  // Updated signUp to accept phone number
+  const signUp = async (email: string, password: string, name: string, phone: string) => {
     const res = await createUserWithEmailAndPassword(auth, email, password);
+
     if (res.user) {
       const newProfile: Profile = {
         id: res.user.uid,
         name,
         email,
+        phone, // store phone
         created_at: new Date().toISOString(),
       };
+
       await setDoc(doc(db, "profiles", res.user.uid), newProfile);
       setProfile(newProfile);
     }

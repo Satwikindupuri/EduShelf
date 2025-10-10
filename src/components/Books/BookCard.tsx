@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, DollarSign, Tag, Clock, MessageSquare } from 'lucide-react';
+import { User, DollarSign, Tag, Clock, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { IndianRupee } from "lucide-react";
+
 
 interface Book {
   id: string;
@@ -12,7 +14,7 @@ interface Book {
   description: string;
   price: number | null;
   condition: string;
-  image_url: string | null;
+  image_urls?: string[];
   is_available: boolean;
   owner_id: string;
   created_at: string;
@@ -33,6 +35,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
   const [requestSent, setRequestSent] = useState(false);
   const [message, setMessage] = useState('');
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const isOwnBook = user?.uid === book.owner_id;
   const defaultImage =
@@ -81,13 +84,8 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
   const formatDate = (dateValue: any) => {
     if (!dateValue) return 'Unknown';
     try {
-      const date =
-        typeof dateValue.toDate === 'function' ? dateValue.toDate() : new Date(dateValue);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
+      const date = typeof dateValue.toDate === 'function' ? dateValue.toDate() : new Date(dateValue);
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch {
       return 'Unknown';
     }
@@ -95,31 +93,56 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
 
   const getConditionColor = (condition: string) => {
     switch (condition.toLowerCase()) {
-      case 'excellent':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'good':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'fair':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'poor':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'excellent': return 'bg-green-100 text-green-800 border-green-200';
+      case 'good': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'fair': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'poor': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  // Slider logic
+  const images = book.image_urls && book.image_urls.length > 0 ? book.image_urls : [defaultImage];
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
   return (
     <>
       {/* Book Card */}
       <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200">
-        {/* Book Image */}
+        {/* Book Image Slider */}
         <div className="relative h-48 bg-gray-100">
           <img
-            src={book.image_url || defaultImage}
+            src={images[currentImageIndex]}
             alt={book.title}
             className="w-full h-full object-cover"
             onError={(e) => ((e.target as HTMLImageElement).src = defaultImage)}
           />
+
+          {/* Left/Right Arrows */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={prevImage}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-30 text-white p-1 rounded-full hover:bg-opacity-60"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={nextImage}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-30 text-white p-1 rounded-full hover:bg-opacity-60"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
+          )}
+
           {!book.is_available && (
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
               <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
@@ -135,11 +158,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
             <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">{book.title}</h3>
             <p className="text-gray-600 text-sm mb-2">{book.author}</p>
             <div className="flex items-center space-x-2 mb-3">
-              <span
-                className={`px-2 py-1 text-xs font-medium border rounded-full ${getConditionColor(
-                  book.condition
-                )}`}
-              >
+              <span className={`px-2 py-1 text-xs font-medium border rounded-full ${getConditionColor(book.condition)}`}>
                 {book.condition}
               </span>
               <div className="flex items-center text-gray-500 text-xs">
@@ -149,19 +168,18 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
             </div>
           </div>
 
-          {book.description && (
-            <p className="text-gray-700 text-sm mb-4 line-clamp-3">{book.description}</p>
-          )}
+          {book.description && <p className="text-gray-700 text-sm mb-4 line-clamp-3">{book.description}</p>}
+
 
           {/* Price */}
           <div className="mb-4">
             {book.price ? (
-              <div className="flex items-center text-green-600 font-semibold">
-                <DollarSign className="h-4 w-4 mr-1" />
-                <span>{book.price}</span>
+              <div className="flex items-center text-green-600 font-semibold text-lg">
+                <IndianRupee className="h-5 w-5 mr-1" />
+                <span className="text-lg">{book.price}</span>
               </div>
             ) : (
-              <span className="text-blue-600 font-semibold">Free</span>
+              <span className="text-blue-600 font-semibold text-lg">Free</span>
             )}
           </div>
 
@@ -194,9 +212,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, onRequestSent, showRequestBut
           )}
 
           {isOwnBook && (
-            <div className="text-center py-2 text-sm text-gray-500 bg-gray-50 rounded-lg">
-              Your Book
-            </div>
+            <div className="text-center py-2 text-sm text-gray-500 bg-gray-50 rounded-lg">Your Book</div>
           )}
         </div>
       </div>

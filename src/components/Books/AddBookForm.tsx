@@ -20,8 +20,39 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
   const [year, setYear] = useState('');
   const [price, setPrice] = useState<number | null>(null);
   const [description, setDescription] = useState('');
-
   const [submitting, setSubmitting] = useState(false);
+
+  // 🖼️ New states for images
+  const [images, setImages] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  // 🖼️ Handle file selection
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const selectedFiles = Array.from(e.target.files).slice(0, 3); // limit to 3
+    setImages(selectedFiles);
+    setPreviewUrls(selectedFiles.map(file => URL.createObjectURL(file)));
+  };
+
+  // 📄 Convert image to base64 (for Free Tier testing)
+  const convertToBase64 = (file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  // 🖼️ "Upload" images as base64 strings
+  const uploadImages = async () => {
+    const urls: string[] = [];
+    for (const file of images) {
+      const base64 = await convertToBase64(file);
+      urls.push(base64);
+    }
+    return urls;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +61,13 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
     setSubmitting(true);
 
     try {
+      let imageUrls: string[] = [];
+      if (images.length > 0) {
+        imageUrls = await uploadImages(); // convert to base64
+      } else {
+        imageUrls = ["https://via.placeholder.com/300x400.png?text=Book+Image"]; // default
+      }
+
       await addDoc(collection(db, 'books'), {
         title: title.trim(),
         subject: subject.trim(),
@@ -39,9 +77,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
         year,
         price: price ? Number(price) : null,
         description: description.trim(),
-        image_urls: [
-          "https://via.placeholder.com/300x400.png?text=Book+Image"
-        ], // ✅ default image
+        image_urls: imageUrls, // ✅ base64 or default URL
         is_available: true,
         owner_id: user.uid,
         created_at: serverTimestamp(),
@@ -88,7 +124,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
             className="w-full border rounded-lg px-4 py-2"
           />
 
-
+          {/* Regulation */}
           <select
             value={regulation}
             onChange={(e) => setRegulation(e.target.value)}
@@ -96,36 +132,12 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
             className="w-full border rounded-lg px-4 py-2"
           >
             <option value="">Select Regulation</option>
-            <option value="R18">R19</option>
+            <option value="R19">R19</option>
             <option value="R20">R20</option>
-            <option value="R22">R23</option>
+            <option value="R23">R23</option>
           </select>
 
-          {/* <select
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-            required
-            className="w-full border rounded-lg px-4 py-2"
-          >
-            <option value="">Book Condition</option>
-            <option value="Book Condition">Excellent</option>
-            <option value="">Good</option>
-            <option value="">Fair</option>
-            <option value="">Poor</option>
-          </select> */}
-
-          {/* <select
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            required
-            className="w-full border rounded-lg px-4 py-2"
-          >
-            <option value="">Select Year</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-            <option value="2023">2023</option>
-          </select> */}
-          
+          {/* Price */}
           <input
             type="number"
             placeholder="Selling Price (₹)"
@@ -135,12 +147,39 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onClose, onBookAdded }) => {
             className="w-full border rounded-lg px-4 py-2"
           />
 
+          {/* Description / Notes */}
           <textarea
-            placeholder="Please Provide your Name, Year & Branch,Contact Number"
+            placeholder="Please Provide your Name, Year & Branch."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full border rounded-lg px-4 py-2"
           />
+
+          {/* 🖼️ Image Upload Section */}
+          <div>
+            <label className="block font-medium mb-1">Upload Images (max 3)</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageChange}
+              className="w-full border rounded-lg px-4 py-2"
+            />
+
+            {/* 🖼️ Preview selected images */}
+            {previewUrls.length > 0 && (
+              <div className="flex gap-2 mt-2">
+                {previewUrls.map((url, index) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`Preview ${index + 1}`}
+                    className="w-20 h-20 object-cover rounded-lg border"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
             type="submit"

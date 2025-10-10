@@ -8,6 +8,7 @@ const AuthForm: React.FC = () => {
     name: '',
     email: '',
     password: '',
+    phone: '', // new field
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ const AuthForm: React.FC = () => {
 
     try {
       if (isSignUp) {
-        await signUp(formData.email, formData.password, formData.name);
+        await signUp(formData.email, formData.password, formData.name, formData.phone);
       } else {
         await signIn(formData.email, formData.password);
       }
@@ -48,7 +49,7 @@ const AuthForm: React.FC = () => {
         style={{ backgroundImage: "url('/ideal_bg.jpg')" }}
         aria-hidden="true"
       />
-      {/* Overlay to darken the background (optional) */}
+      {/* Overlay */}
       <div className="absolute inset-0 bg-black bg-opacity-40" />
 
       {/* AuthForm content */}
@@ -77,6 +78,7 @@ const AuthForm: React.FC = () => {
               </div>
             )}
 
+            {/* Name field */}
             {isSignUp && (
               <div>
                 <label htmlFor="name" className="block text-sm font-bold text-white mb-2">
@@ -100,6 +102,31 @@ const AuthForm: React.FC = () => {
               </div>
             )}
 
+            {/* Phone field */}
+            {isSignUp && (
+              <div>
+                <label htmlFor="phone" className="block text-sm font-bold text-white mb-2">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    required={isSignUp}
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-bold text-white mb-2">
                 Email Address
@@ -121,6 +148,7 @@ const AuthForm: React.FC = () => {
               </div>
             </div>
 
+            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-bold text-white mb-2">
                 Password
@@ -153,6 +181,7 @@ const AuthForm: React.FC = () => {
               </div>
             </div>
 
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
@@ -178,7 +207,7 @@ const AuthForm: React.FC = () => {
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   setError('');
-                  setFormData({ name: '', email: '', password: '' });
+                  setFormData({ name: '', email: '', password: '', phone: '' });
                 }}
                 className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
               >

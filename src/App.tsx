@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect,useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthForm from './components/Auth/AuthForm';
 import Navbar from './components/Layout/Navbar';
@@ -10,13 +10,14 @@ import ProfileView from './components/Views/ProfileView';
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('home');
+  const [darkMode, setDarkMode] = useState(false); // Global dark mode state
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-lg p-8 flex items-center space-x-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 flex items-center space-x-4">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-700 font-medium">Loading EduShelf...</span>
+          <span className="text-gray-700 dark:text-gray-200 font-medium">Loading EduShelf...</span>
         </div>
       </div>
     );
@@ -29,24 +30,29 @@ const AppContent: React.FC = () => {
   const renderView = () => {
     switch (currentView) {
       case 'home':
-        return <HomeView />;
+        return <HomeView darkMode={darkMode} />;
       case 'my-books':
-        return <MyBooksView />;
+        return <MyBooksView darkMode={darkMode} />;
       case 'requests':
-        return <RequestsView />;
+        return <RequestsView darkMode={darkMode} />;
       case 'profile':
-        return <ProfileView />;
+        return <ProfileView darkMode={darkMode} />;
       default:
-        return <HomeView />;
+        return <HomeView darkMode={darkMode} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar currentView={currentView} onViewChange={setCurrentView} />
-      <main>
-        {renderView()}
-      </main>
+    <div className={darkMode ? 'dark' : ''}>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+        <Navbar
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
+        <main>{renderView()}</main>
+      </div>
     </div>
   );
 };

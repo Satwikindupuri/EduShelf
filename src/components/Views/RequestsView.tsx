@@ -1,23 +1,7 @@
 import React, { useState, useEffect } from "react";
-import {
-  MessageSquare,
-  Clock,
-  CheckCircle,
-  XCircle,
-  User,
-  Book,
-} from "lucide-react";
+import { MessageSquare, Clock, CheckCircle, XCircle, User, Book, X } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  updateDoc,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
 interface ExchangeRequest {
@@ -31,12 +15,14 @@ interface ExchangeRequest {
   updated_at: string;
   books?: {
     title: string;
-    author: string;
+    description: string;
     image_url: string | null;
   };
   requester?: {
-    name: string;
-    email: string;
+    phone?: string;
+  };
+  owner?: {
+    phone?: string;
   };
 }
 
@@ -45,31 +31,22 @@ const RequestsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
   const [requests, setRequests] = useState<ExchangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRequest, setSelectedRequest] = useState<ExchangeRequest | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchRequests();
-    }
+    if (user) fetchRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeTab]);
 
   const fetchRequests = async () => {
     if (!user) return;
-
     setLoading(true);
+
     try {
-      let q;
-      if (activeTab === "received") {
-        q = query(
-          collection(db, "exchange_requests"),
-          where("owner_id", "==", user.uid)
-        );
-      } else {
-        q = query(
-          collection(db, "exchange_requests"),
-          where("requester_id", "==", user.uid)
-        );
-      }
+      const q =
+        activeTab === "received"
+          ? query(collection(db, "exchange_requests"), where("owner_id", "==", user.uid))
+          : query(collection(db, "exchange_requests"), where("requester_id", "==", user.uid));
 
       const snapshot = await getDocs(q);
       const data: ExchangeRequest[] = [];
@@ -82,34 +59,37 @@ const RequestsView: React.FC = () => {
         if (requestData.book_id) {
           const bookRef = doc(db, "books", requestData.book_id);
           const bookSnap = await getDoc(bookRef);
-          if (bookSnap.exists()) {
-            bookData = bookSnap.data();
-          }
+          if (bookSnap.exists()) bookData = bookSnap.data();
         }
 
-        // Fetch requester details
+        // Fetch requester phone from profiles
         let requesterData = null;
         if (requestData.requester_id) {
-          const requesterRef = doc(db, "users", requestData.requester_id);
-          const requesterSnap = await getDoc(requesterRef);
-          if (requesterSnap.exists()) {
-            requesterData = requesterSnap.data();
-          }
+          const profileRef = doc(db, "profiles", requestData.requester_id);
+          const profileSnap = await getDoc(profileRef);
+          if (profileSnap.exists()) requesterData = { phone: profileSnap.data()?.phone };
+          else console.log("Requester profile not found:", requestData.requester_id);
+        }
+
+        // Fetch owner phone from profiles
+        let ownerData = null;
+        if (requestData.owner_id) {
+          const profileRef = doc(db, "profiles", requestData.owner_id);
+          const profileSnap = await getDoc(profileRef);
+          if (profileSnap.exists()) ownerData = { phone: profileSnap.data()?.phone };
+          else console.log("Owner profile not found:", requestData.owner_id);
         }
 
         data.push({
-          id: docSnap.id,
           ...requestData,
+          id: docSnap.id,
           books: bookData as any,
           requester: requesterData as any,
+          owner: ownerData as any,
         });
       }
 
-      // Sort by created_at (fallback if Firestore index missing)
-      data.sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
+      data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setRequests(data);
     } catch (error) {
       console.error("Error fetching requests:", error);
@@ -118,10 +98,7 @@ const RequestsView: React.FC = () => {
     }
   };
 
-  const updateRequestStatus = async (
-    requestId: string,
-    status: "approved" | "rejected"
-  ) => {
+  const updateRequestStatus = async (requestId: string, status: "approved" | "rejected") => {
     try {
       const requestRef = doc(db, "exchange_requests", requestId);
       await updateDoc(requestRef, {
@@ -142,19 +119,6 @@ const RequestsView: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="h-5 w-5 text-yellow-500" />;
-      case "approved":
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case "rejected":
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      default:
-        return <Clock className="h-5 w-5 text-gray-500" />;
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -168,61 +132,47 @@ const RequestsView: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
   const defaultBookImage =
     "https://images.pexels.com/photos/1029141/pexels-photo-1029141.jpeg?auto=compress&cs=tinysrgb&w=400";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Exchange Requests
-        </h1>
-        <p className="text-gray-600">Manage book exchange requests</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Book Exchange Requests</h1>
+        <p className="text-gray-600 text-lg">Manage your incoming and outgoing requests with ease.</p>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => setActiveTab("received")}
-            className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${
+            className={`flex-1 py-4 px-6 text-sm font-semibold transition-all duration-300 ease-in-out ${
               activeTab === "received"
-                ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
+                ? "border-b-4 border-blue-500 text-blue-600 bg-blue-50"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center justify-center space-x-2">
               <MessageSquare className="h-4 w-4" />
               <span>Requests Received</span>
-              {requests.filter(
-                (r) => r.status === "pending" && activeTab === "received"
-              ).length > 0 && (
-                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 ml-2">
-                  {
-                    requests.filter(
-                      (r) => r.status === "pending" && activeTab === "received"
-                    ).length
-                  }
-                </span>
-              )}
             </div>
           </button>
+
           <button
             onClick={() => setActiveTab("sent")}
-            className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${
+            className={`flex-1 py-4 px-6 text-sm font-semibold transition-all duration-300 ease-in-out ${
               activeTab === "sent"
-                ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
+                ? "border-b-4 border-blue-500 text-blue-600 bg-blue-50"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             }`}
           >
@@ -236,131 +186,167 @@ const RequestsView: React.FC = () => {
 
       {/* Requests List */}
       {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse"
-            >
-              <div className="flex space-x-4">
-                <div className="bg-gray-300 h-20 w-16 rounded-lg"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="bg-gray-300 h-4 rounded w-3/4"></div>
-                  <div className="bg-gray-300 h-4 rounded w-1/2"></div>
-                  <div className="bg-gray-300 h-8 rounded w-1/4"></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="text-center text-gray-500 mt-10">Loading requests... ⏳</p>
       ) : requests.length > 0 ? (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {requests.map((request) => (
             <div
               key={request.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 transform transition-all duration-300 hover:shadow-xl hover:scale-105"
+              onClick={() => setSelectedRequest(request)}
             >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                {/* Request Info */}
-                <div className="flex space-x-4 mb-4 lg:mb-0">
-                  {/* Book Image */}
-                  <div className="flex-shrink-0">
-                    <img
-                      src={request.books?.image_url || defaultBookImage}
-                      alt={request.books?.title}
-                      className="w-20 h-24 object-cover rounded-lg border border-gray-200"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = defaultBookImage;
-                      }}
-                    />
+              <div className="flex items-start space-x-4">
+                <img
+                  src={request.books?.image_url || defaultBookImage}
+                  alt={request.books?.title}
+                  className="w-20 h-28 object-cover rounded-lg flex-shrink-0"
+                  onError={(e) => ((e.target as HTMLImageElement).src = defaultBookImage)}
+                />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
+                    {request.books?.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-2 truncate">{request.books?.description}</p>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+                    <Clock size={16} />
+                    <span>{formatDate(request.created_at)}</span>
                   </div>
-
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900 truncate">
-                        {request.books?.title}
-                      </h3>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium border rounded-full ${getStatusColor(
-                          request.status
-                        )}`}
+                  <span
+                    className={`inline-block px-3 py-1 text-xs font-medium border rounded-full ${getStatusColor(
+                      request.status
+                    )}`}
+                  >
+                    {request.status.toUpperCase()}
+                  </span>
+                  
+                  {/* Action Buttons for received requests */}
+                  {activeTab === "received" && request.status === "pending" && (
+                    <div className="mt-4 flex space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateRequestStatus(request.id, "approved");
+                        }}
+                        className="flex-1 bg-green-500 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-green-600 transition-colors"
                       >
-                        {request.status.charAt(0).toUpperCase() +
-                          request.status.slice(1)}
-                      </span>
+                        Approve
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateRequestStatus(request.id, "rejected");
+                        }}
+                        className="flex-1 bg-red-500 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-red-600 transition-colors"
+                      >
+                        Reject
+                      </button>
                     </div>
+                  )}
 
-                    <p className="text-sm text-gray-600 mb-2">
-                      by {request.books?.author}
-                    </p>
-
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <User className="h-4 w-4" />
-                        <span>
-                          {activeTab === "received"
-                            ? `Request from ${request.requester?.name || ""}`
-                            : `Request to owner`}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{formatDate(request.created_at)}</span>
-                      </div>
-                    </div>
-
-                    {request.message && (
-                      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-700">{request.message}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                {activeTab === "received" && request.status === "pending" && (
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => updateRequestStatus(request.id, "approved")}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
+                  {/* Message Button */}
+                  {request.status === "approved" && (activeTab === "received" ? request.requester?.phone : request.owner?.phone) && (
+                    <a
+                      href={`https://wa.me/+91${activeTab === "received" ? request.requester?.phone : request.owner?.phone}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()} // Prevent modal from opening
+                      className="mt-4 inline-block"
                     >
-                      <CheckCircle className="h-4 w-4" />
-                      <span>Approve</span>
-                    </button>
-                    <button
-                      onClick={() => updateRequestStatus(request.id, "rejected")}
-                      className="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center space-x-2"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      <span>Reject</span>
-                    </button>
-                  </div>
-                )}
+                      <button className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                        Message on WhatsApp 💬
+                      </button>
+                    </a>
+                  )}
 
-                {/* Status Icon */}
-                <div className="flex items-center justify-end lg:ml-4">
-                  {getStatusIcon(request.status)}
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-            <MessageSquare className="h-8 w-8 text-gray-400" />
+        <div className="flex flex-col items-center justify-center p-20 bg-white rounded-xl shadow-lg border border-gray-200">
+          <p className="text-gray-500 text-xl font-medium">No requests found.</p>
+          <p className="text-gray-400 mt-2">You haven't received or sent any requests yet.</p>
+        </div>
+      )}
+
+      {/* Modal */}
+      {selectedRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 relative shadow-2xl animate-fade-in">
+            <button
+              onClick={() => setSelectedRequest(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedRequest.books?.title}</h2>
+              <p className="text-gray-500 text-sm">
+                Request {activeTab === "received" ? "from" : "to"}:{" "}
+                <span className="font-medium text-gray-700">
+                  {activeTab === "received" ? selectedRequest.requester_id : selectedRequest.owner_id}
+                </span>
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <div className="flex items-center mb-2">
+                <span className="text-gray-600 font-medium">Status:</span>
+                <span
+                  className={`ml-2 px-3 py-1 text-sm font-semibold border rounded-full ${getStatusColor(
+                    selectedRequest.status
+                  )}`}
+                >
+                  {selectedRequest.status.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
+                <span className="font-medium text-gray-700">Message:</span> {selectedRequest.message || "No message provided."}
+              </p>
+            </div>
+
+            {/* Modal Action Buttons for received requests */}
+            {activeTab === "received" && selectedRequest.status === "pending" && (
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    updateRequestStatus(selectedRequest.id, "approved");
+                    setSelectedRequest(null);
+                  }}
+                  className="flex-1 bg-green-600 text-white rounded-lg px-6 py-3 font-semibold hover:bg-green-700 transition-colors"
+                >
+                  <CheckCircle size={20} className="inline-block mr-2" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => {
+                    updateRequestStatus(selectedRequest.id, "rejected");
+                    setSelectedRequest(null);
+                  }}
+                  className="flex-1 bg-red-600 text-white rounded-lg px-6 py-3 font-semibold hover:bg-red-700 transition-colors"
+                >
+                  <XCircle size={20} className="inline-block mr-2" />
+                  Reject
+                </button>
+              </div>
+            )}
+
+            {/* Modal Message Button */}
+            {(selectedRequest.status === "approved" && (activeTab === "received" ? selectedRequest.requester?.phone : selectedRequest.owner?.phone)) && (
+              <a
+                href={`https://wa.me/+91${activeTab === "received" ? selectedRequest.requester?.phone : selectedRequest.owner?.phone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 block w-full"
+              >
+                <button className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg text-lg font-medium transition-colors">
+                  Message on WhatsApp 💬
+                </button>
+              </a>
+            )}
+            
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {activeTab === "received"
-              ? "No requests received"
-              : "No requests sent"}
-          </h3>
-          <p className="text-gray-600">
-            {activeTab === "received"
-              ? "When students request your books, they will appear here"
-              : "Books you request from other students will appear here"}
-          </p>
         </div>
       )}
     </div>
